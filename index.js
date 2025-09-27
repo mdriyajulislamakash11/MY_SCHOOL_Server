@@ -33,13 +33,46 @@ async function run() {
     app.post("/users", async (req, res) => {
       const user = req.body;
 
-      const existingUser = await userCollection.findOne({ email: user.email });
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
       if (existingUser) {
-        return res.send({ message: "User already exists" });
+        return res.send({ message: "User already exists", existingUser });
       }
-      const result = await userCollection.insertOne(user);
+
+      const newUser = {
+        name: user?.name,
+        email: user?.email,
+        role: user?.role || "student", // Default role is 'student'
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await userCollection.insertOne(newUser);
       res.send(result);
     });
+
+    // ✅ Get All Users (GET)
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // ✅ Get Single User by Email (GET)
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email });
+      res.send(user);
+    });
+
+
+
+    // 
+
+
+
+
+
+
 
 
 
