@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config(); // Load .env variables
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,6 +29,74 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db("study_buddy_DB").collection("users");
+    const sessionCollection = client.db("study_buddy_DB").collection("sessions");
+
+
+    // JWT Related APIs ______________________________________________//
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    // Verify JWT Middleware
+    const verifyJWT = (req, res, next) => {
+      if (!req.headers.authentication) {
+        return res.status(401).send({ message: "unauthorized Access DGM-1" });
+      }
+
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(403).send({ message: "Forbidden" });
+        }
+        req.user = decoded;
+        next();
+      });
+    };
+
+    // verify Student Middleware
+    const verifyStudent = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "student") {
+        return res.status(403).send({ message: "Forbidden" });
+      }
+      next();
+    };  
+
+    // verify teacher Middleware
+    const verifyTeacher = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "teacher") {
+        return res.status(403).send({ message: "Forbidden" });
+      }
+      next();
+    };
+
+    // verify Admin Middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ message: "Forbidden" });
+      }
+      next();
+    };
+
+    // _________________________________ end of JWT Related APIs //_____________________________//
+
+
+
 
     // user related apis ______________________________________________//
     app.post("/users", async (req, res) => {
@@ -64,16 +133,14 @@ async function run() {
       res.send(user);
     });
 
-
-
-    // 
-
-
-
-
-
-
-
+    //teacher related apis ______________________________________________//
+    app.post("/create-sessions", async (req, res) => {
+      const session = req.body; 
+      
+      // Create a new session
+      const result = await sessionCollection.insertOne(session);
+      res.send(result);
+    });
 
 
 
