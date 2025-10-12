@@ -111,21 +111,21 @@ async function run() {
     // Search users by name or email
     app.get(
       "/users/search",
-  
+
       async (req, res) => {
         try {
-          const searchText = req.query.query?.trim(); // query parameter থেকে নাও
+          const searchText = req.query.query?.trim();
           let query = {};
 
           if (searchText) {
             query = {
               $or: [
-                { name: { $regex: searchText, $options: "i" } }, // name search
-                { email: { $regex: searchText, $options: "i" } }, // email search
+                { name: { $regex: searchText, $options: "i" } },
+                { email: { $regex: searchText, $options: "i" } },
               ],
             };
           }
-          // যদি searchText খালি থাকে, MongoDB সব document return করবে
+
           const result = await userCollection.find(query).toArray();
           res.send(result);
         } catch (err) {
@@ -172,22 +172,52 @@ async function run() {
       res.send(result);
     });
 
-    // Update session status (Admin only)
-    app.patch(
-      "/sessions/:id/status",
-      verifyJWT,
-      verifyRole("admin"),
-      async (req, res) => {
-        const id = req.params.id;
-        const { status } = req.body; // accept/reject
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = {
-          $set: { status, updatedAt: new Date() },
-        };
-        const result = await sessionCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      }
-    );
+    // Update session status (Admin only) _____________________________________///
+
+    // ✅ Update session Approval Details (Admin only)
+    app.patch("/sessions/approval/:id", async (req, res) => {
+      const id = req.params.id;
+      const { amount, type } = req.body; // frontend থেকে আসবে
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          type, // Free or Paid
+          amount, // নতুন amount
+          updatedAt: new Date(),
+        },
+      };
+
+      const result = await sessionCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // ✅ Update session status + type + amount (Admin only)
+    app.patch("/sessions/:id/status", async (req, res) => {
+      const id = req.params.id;
+      const { status, type, amount } = req.body;
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          status, // "approved"
+          type, // "Free" or "Paid"
+          amount, // 0 or custom value
+          updatedAt: new Date(),
+        },
+      };
+
+      const result = await sessionCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete("/sessions/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await sessionCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // ================= Materials APIs =================
     // Upload material (Tutor only, for approved sessions)
