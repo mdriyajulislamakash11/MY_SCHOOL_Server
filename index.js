@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -63,6 +64,12 @@ async function run() {
     const materialCollection = client
       .db("study_buddy_DB")
       .collection("materials");
+    const paymentCollection = client
+      .db("study_buddy_DB")
+      .collection("payments");
+    const bookedSessionCollection = client
+      .db("study_buddy_DB")
+      .collection("booked");
 
     // ================= Role Verify Middleware =================
     const verifyRole = (role) => {
@@ -147,16 +154,26 @@ async function run() {
 
     // ================= Session APIs =================
     // Create session (Tutor only)
-    app.post("/create-sessions", async (req, res) => {
-      const session = req.body;
 
-      const result = await sessionCollection.insertOne(session);
-      res.send(result);
+    // session details
+    app.get("/sessions/:id", async (req, res) => {
+      const id = req.params.id;
+      const session = await sessionCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      res.send(session);
     });
 
     // Get all sessions (Admin can see all)
     app.get("/sessions", async (req, res) => {
       const result = await sessionCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/create-sessions", async (req, res) => {
+      const session = req.body;
+
+      const result = await sessionCollection.insertOne(session);
       res.send(result);
     });
 
@@ -177,7 +194,7 @@ async function run() {
     // ✅ Update session Approval Details (Admin only)
     app.patch("/sessions/approval/:id", async (req, res) => {
       const id = req.params.id;
-      const { amount, type } = req.body; // frontend থেকে আসবে
+      const { amount, type } = req.body;
       const filter = { _id: new ObjectId(id) };
 
       const updateDoc = {
@@ -274,6 +291,71 @@ async function run() {
         res.send(result);
       }
     );
+
+    // ____________________________________________ Payment APIs ____________________________________________///
+    // Payment intent creation
+    // ____________________________________________ Payment APIs ____________________________________________///
+    // ✅ Get single session
+    app.get("/sessions/:id", async (req, res) => {
+      const session = await sessionCollection.findOne({
+        _id: new ObjectId(req.params.id),
+      });
+      res.send(session);
+    });
+
+    // ✅ Create Payment Intent Route
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    // Stripe amount সবসময় 'cents' এ নেয়, তাই এখানে *100 করা হবে না
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: parseInt(amount), // সরাসরি amount পাঠানো হবে (যদি frontend থেকে cents পাঠাও)
+      currency: "usd",
+      payment_method_types: ["card"],
+    });
+
+    res.send({ clientSecret: paymentIntent.client_secret });
+  } catch (error) {
+    console.error("❌ Payment Intent Error:", error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+
+    // ✅ Save Payment & Booking
+app.post("/payments", async (req, res) => {
+  const payment = req.body;
+  const paymentResult = await paymentCollection.insertOne(payment); // 
+
+  const bookedSession = {
+    userEmail: payment.userEmail,
+    sessionId: payment.sessionId,
+    sessionTitle: payment.sessionTitle,
+    amount: payment.amount,
+    transactionId: payment.transactionId,
+    date: payment.date,
+  };
+
+  const bookedResult = await bookedSessionCollection.insertOne(bookedSession);
+
+  res.send({ paymentResult, bookedResult });
+});
+
+    // ✅ Book Free Session
+    app.post("/booked-sessions", async (req, res) => {
+      const result = await bookedSessionCollection.insertOne(req.body);
+      res.send(result);
+    });
+
+    // ✅ Get Booked Sessions by user email
+    app.get("/booked-sessions", async (req, res) => {
+      const email = req.query.email;
+      const result = await bookedSessionCollection
+        .find({ userEmail: email })
+        .toArray();
+      res.send(result);
+    });
 
     // ================= End =================
     await client.db("admin").command({ ping: 1 });
