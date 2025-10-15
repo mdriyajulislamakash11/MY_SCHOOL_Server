@@ -191,6 +191,21 @@ async function run() {
 
     // Update session status (Admin only) _____________________________________///
 
+    // Get all materials (Admin only)
+    app.get("/materials",  async (req, res) => {
+      const result = await materialCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Delete a material by Admin
+    app.delete("/materials/:id",  async (req, res) => {
+      const id = req.params.id;
+      const result = await materialCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
     // ✅ Update session Approval Details (Admin only)
     app.patch("/sessions/approval/:id", async (req, res) => {
       const id = req.params.id;
@@ -238,53 +253,39 @@ async function run() {
 
     // ================= Materials APIs =================
     // Upload material (Tutor only, for approved sessions)
-    app.post(
-      "/materials",
-      async (req, res) => {
-        const material = req.body;
-        const result = await materialCollection.insertOne(material);
-        res.send(result);
-      }
-    );
+    app.post("/materials", async (req, res) => {
+      const material = req.body;
+      const result = await materialCollection.insertOne(material);
+      res.send(result);
+    });
 
     // Get tutor materials
-    app.get(
-      "/materials/:email",
-      async (req, res) => {
-        const email = req.params.email;
-        const result = await materialCollection
-          .find({ tutorEmail: email })
-          .toArray();
-        res.send(result);
-      }
-    );
+    app.get("/materials/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await materialCollection
+        .find({ tutorEmail: email })
+        .toArray();
+      res.send(result);
+    });
 
     // Delete material
-    app.delete(
-      "/materials/:id",
-      async (req, res) => {
-        const id = req.params.id;
-        const result = await materialCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-        res.send(result);
-      }
-    );
+    app.delete("/materials/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await materialCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // Update material
-    app.patch(
-      "/materials/:id",
-      async (req, res) => {
-        const id = req.params.id;
-        const updated = req.body;
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = { $set: { ...updated, updatedAt: new Date() } };
-        const result = await materialCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      }
-    );
-
-
+    app.patch("/materials/:id", async (req, res) => {
+      const id = req.params.id;
+      const updated = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { ...updated, updatedAt: new Date() } };
+      const result = await materialCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
     // ____________________________________________ Payment APIs ____________________________________________///
     // Payment intent creation
@@ -298,42 +299,48 @@ async function run() {
     });
 
     // ✅ Create Payment Intent Route
-app.post("/create-payment-intent", async (req, res) => {
-  try {
-    const { amount } = req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { amount } = req.body;
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: parseInt(amount), 
-      currency: "usd",
-      payment_method_types: ["card"],
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: parseInt(amount),
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("❌ Payment Intent Error:", error);
+        res.status(500).send({ error: error.message });
+      }
     });
 
-    res.send({ clientSecret: paymentIntent.client_secret });
-  } catch (error) {
-    console.error("❌ Payment Intent Error:", error);
-    res.status(500).send({ error: error.message });
-  }
-});
-
+    app.get("/payments", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
 
     // ✅ Save Payment & Booking
-app.post("/payments", async (req, res) => {
-  const payment = req.body;
-  const paymentResult = await paymentCollection.insertOne(payment); // 
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment); //
 
-  const bookedSession = {
-    userEmail: payment.userEmail,
-    sessionId: payment.sessionId,
-    sessionTitle: payment.sessionTitle,
-    amount: payment.amount,
-    transactionId: payment.transactionId,
-    date: payment.date,
-  };
+      const bookedSession = {
+        userEmail: payment.userEmail,
+        sessionId: payment.sessionId,
+        sessionTitle: payment.sessionTitle,
+        amount: payment.amount,
+        transactionId: payment.transactionId,
+        date: payment.date,
+      };
 
-  const bookedResult = await bookedSessionCollection.insertOne(bookedSession);
+      const bookedResult = await bookedSessionCollection.insertOne(
+        bookedSession
+      );
 
-  res.send({ paymentResult, bookedResult });
-});
+      res.send({ paymentResult, bookedResult });
+    });
 
     // ✅ Book Free Session
     app.post("/booked-sessions", async (req, res) => {
