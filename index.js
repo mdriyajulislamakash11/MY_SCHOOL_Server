@@ -240,8 +240,6 @@ async function run() {
     // Upload material (Tutor only, for approved sessions)
     app.post(
       "/materials",
-      verifyJWT,
-      verifyRole("teacher"),
       async (req, res) => {
         const material = req.body;
         const result = await materialCollection.insertOne(material);
@@ -252,8 +250,6 @@ async function run() {
     // Get tutor materials
     app.get(
       "/materials/:email",
-      verifyJWT,
-      verifyRole("teacher"),
       async (req, res) => {
         const email = req.params.email;
         const result = await materialCollection
@@ -266,8 +262,6 @@ async function run() {
     // Delete material
     app.delete(
       "/materials/:id",
-      verifyJWT,
-      verifyRole("teacher"),
       async (req, res) => {
         const id = req.params.id;
         const result = await materialCollection.deleteOne({
@@ -280,8 +274,6 @@ async function run() {
     // Update material
     app.patch(
       "/materials/:id",
-      verifyJWT,
-      verifyRole("teacher"),
       async (req, res) => {
         const id = req.params.id;
         const updated = req.body;
@@ -291,6 +283,8 @@ async function run() {
         res.send(result);
       }
     );
+
+
 
     // ____________________________________________ Payment APIs ____________________________________________///
     // Payment intent creation
@@ -308,9 +302,8 @@ app.post("/create-payment-intent", async (req, res) => {
   try {
     const { amount } = req.body;
 
-    // Stripe amount সবসময় 'cents' এ নেয়, তাই এখানে *100 করা হবে না
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: parseInt(amount), // সরাসরি amount পাঠানো হবে (যদি frontend থেকে cents পাঠাও)
+      amount: parseInt(amount), 
       currency: "usd",
       payment_method_types: ["card"],
     });
