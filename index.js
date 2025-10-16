@@ -70,6 +70,8 @@ async function run() {
     const bookedSessionCollection = client
       .db("study_buddy_DB")
       .collection("booked");
+    const reviewCollection = client.db("study_buddy_DB").collection("reviews");
+    const noteCollection = client.db("study_buddy_DB").collection("notes");
 
     // ================= Role Verify Middleware =================
     const verifyRole = (role) => {
@@ -152,6 +154,20 @@ async function run() {
       res.send(result);
     });
 
+    //____________________________ review related APIS __________________________________________//
+
+    // GET reviews for a specific session
+    app.post("/reviews", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
     // ================= Session APIs =================
     // Create session (Tutor only)
 
@@ -192,13 +208,13 @@ async function run() {
     // Update session status (Admin only) _____________________________________///
 
     // Get all materials (Admin only)
-    app.get("/materials",  async (req, res) => {
+    app.get("/materials", async (req, res) => {
       const result = await materialCollection.find().toArray();
       res.send(result);
     });
 
     // Delete a material by Admin
-    app.delete("/materials/:id",  async (req, res) => {
+    app.delete("/materials/:id", async (req, res) => {
       const id = req.params.id;
       const result = await materialCollection.deleteOne({
         _id: new ObjectId(id),
@@ -214,8 +230,8 @@ async function run() {
 
       const updateDoc = {
         $set: {
-          type, // Free or Paid
-          amount, // নতুন amount
+          type,
+          amount,
           updatedAt: new Date(),
         },
       };
@@ -345,6 +361,14 @@ async function run() {
     // ✅ Book Free Session
     app.post("/booked-sessions", async (req, res) => {
       const result = await bookedSessionCollection.insertOne(req.body);
+      res.send(result);
+    });
+
+    app.get("/booked-sessions/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await bookedSessionCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
