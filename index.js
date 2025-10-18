@@ -168,6 +168,37 @@ async function run() {
       res.send(result);
     });
 
+    //  ======================== Notes related APIs ========================
+    // ✅ Create a new note
+    app.get("/notes", async (req, res) => {
+      const email = req.query.email;
+      if (!email) return res.status(400).send({ message: "Email required" });
+      const notes = await noteCollection.find({ email }).toArray();
+      res.send(notes);
+    });
+
+    app.post("/notes", async (req, res) => {
+      const note = req.body;
+      const result = await noteCollection.insertOne(note);
+      res.send(result);
+    });
+
+    app.delete("/notes/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await noteCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    app.put("/notes/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedNote = req.body;
+      const result = await noteCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedNote }
+      );
+      res.send(result);
+    });
+
     // ================= Session APIs =================
     // Create session (Tutor only)
 
@@ -207,12 +238,18 @@ async function run() {
 
     // Update session status (Admin only) _____________________________________///
 
-    // Get all materials (Admin only)
+    // Get all materials
     app.get("/materials", async (req, res) => {
       const result = await materialCollection.find().toArray();
       res.send(result);
     });
 
+    // ✅ Get materials by study session ID
+    app.get("/materials/session/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await materialCollection.find({ sessionId: id }).toArray();
+      res.send(result);
+    });
     // Delete a material by Admin
     app.delete("/materials/:id", async (req, res) => {
       const id = req.params.id;
