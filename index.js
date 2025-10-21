@@ -88,6 +88,8 @@ async function run() {
     // ================= User APIs =================
     app.post("/users", async (req, res) => {
       const user = req.body;
+
+      console.log("🚀 Adding user:", user);
       const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
@@ -97,6 +99,7 @@ async function run() {
       const newUser = {
         name: user?.name,
         email: user?.email,
+        photoURL: user?.photoUrl || "",
         role: user?.role || "student", // default role
         createdAt: new Date(),
         updatedAt: new Date(),
