@@ -421,6 +421,11 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/booked-sessions/all", async (req, res) => {
+      const result = await bookedSessionCollection.find().toArray();
+      res.send(result);
+    });
+
     // ================= End =================
     await client.db("admin").command({ ping: 1 });
     console.log("✅ MongoDB connected successfully!");
