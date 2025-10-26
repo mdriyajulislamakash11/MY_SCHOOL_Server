@@ -55,7 +55,7 @@ const verifyJWT = (req, res, next) => {
 // ================= Run Function =================
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db("study_buddy_DB").collection("users");
     const sessionCollection = client
@@ -427,8 +427,8 @@ async function run() {
     });
 
     // ================= End =================
-    await client.db("admin").command({ ping: 1 });
-    console.log("✅ MongoDB connected successfully!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("✅ MongoDB connected successfully!");
   } finally {
     // keep connection alive
   }
